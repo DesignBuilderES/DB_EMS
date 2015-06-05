@@ -1,0 +1,88 @@
+﻿!This EMS Program adds 8 l/s·per of ventilation load during sizing.
+!If you want to change the flow/person, change the "0.008" value in the line with the following text SET VentRate = <LoopZoneVariableName>_People*0.008,
+
+Schedule:Compact,
+	OnlySizing,
+	Fraction,
+	Through:31 Dec,
+	For: WinterDesignDay SummerDesignday,
+	Until:24:00, 1,
+	For:AllOtherDays,
+	Until:24:00, 0;
+	
+EnergyManagementSystem:Sensor,
+	OnlySizingSch,OnlySizing,Schedule Value;
+	
+EnergyManagementSystem:Sensor,
+	OutDryBulbTemp,,Site Outdoor Air Drybulb Temperature;
+
+EnergyManagementSystem:Sensor,
+	OutHumRat,,Site Outdoor Air Humidity Ratio;
+
+EnergyManagementSystem:Sensor,
+	BarometricPressure,,Site Outdoor Air Barometric Pressure;
+
+EnergyManagementSystem:ProgramCallingManager,
+	Ventilation Load Calculation,
+	BeginTimestepBeforePredictor,
+	<ForAllZones>,
+	   <LoopZoneVariableName>_LoadCalculation,
+	<LoopNextZone>,
+	Dummyprogram;
+	
+<ForAllZones>,
+	OtherEquipment,
+		<LoopZoneIDFName>SensibleVentilationLoad,
+		<LoopZoneIDFName>,
+		On,EquipmentLevel,0,,,0,0,0;
+	
+	OtherEquipment,
+		<LoopZoneIDFName>LatentVentilationLoad,
+		<LoopZoneIDFName>,
+		On,EquipmentLevel,0,,,1,0,0;
+
+	EnergyManagementSystem:Actuator,
+		<LoopZoneVariableName>_OtherEquipmentSensible,
+		<LoopZoneIDFName>SensibleVentilationLoad,
+		OtherEquipment,
+		Power Level;
+
+	EnergyManagementSystem:Actuator,
+		<LoopZoneVariableName>_OtherEquipmentLatent,
+		<LoopZoneIDFName>LatentVentilationLoad,
+		OtherEquipment,
+		Power Level;
+
+	EnergyManagementSystem:Sensor,
+		<LoopZoneVariableName>_MAT,
+		<LoopZoneIDFName>,
+		Zone Air Temperature ; 
+
+	EnergyManagementSystem:Sensor,
+		<LoopZoneVariableName>_ZoneAirHumRat,
+		<LoopZoneIDFName>,
+		Zone Air Humidity Ratio; 
+
+	EnergyManagementSystem:InternalVariable,
+		<LoopZoneVariableName>_People,
+		People <LoopZoneIDFName>,
+		People Count Design Level;
+   
+	EnergyManagementSystem:Program,
+		<LoopZoneVariableName>_LoadCalculation, 
+		IF OnlySizingSch==1,	
+			SET VentRate = <LoopZoneVariableName>_People*0.008,
+			SET CpAir = @CpAirFnWTdb <LoopZoneVariableName>_ZoneAirHumRat <LoopZoneVariableName>_MAT,
+			SET MCPV = VentRate * CpAir * (@RhoAirFnPbTdbW BarometricPressure OutDryBulbTemp OutHumRat),
+			SET H2OHtOfVap = @HgAirFnWTdb OutHumRat OutDryBulbTemp,
+			SET <LoopZoneVariableName>_OtherEquipmentSensible=MCPV*(OutDryBulbTemp-<LoopZoneVariableName>_MAT),
+			SET <LoopZoneVariableName>_OtherEquipmentLatent=MCPV*(OutHumRat-<LoopZoneVariableName>_ZoneAirHumRat)*H2OHtOfVap/CpAir,
+		ELSE,
+			SET <LoopZoneVariableName>_OtherEquipmentSensible=0,
+			SET <LoopZoneVariableName>_OtherEquipmentLatent=0,
+		ENDIF; 
+<LoopNextZone>,
+
+EnergyManagementSystem:Program,
+	Dummyprogram,
+	SET Dummyvariable = 0;
