@@ -1,0 +1,37 @@
+!- This EMS program uses a buffer zone air conditions (Dry-bulb and Wetbulb) as AHU Outdoor air inlet air conditions. You can use it, for example, to simulate situations where outdoor air is taken from a zone such as a double-facade, trombe-wall, sun-space. You also have to introduce outdoor air to the buffer zone to preserve thermal balance (e.g. through infiltration).
+!- Change AIR LOOP AHU OUTDOOR AIR INLET for the corresponding node name and BufferZone for the buffer zone name (e.g. Block1:Zone1).
+
+!- Este programa EMS cambia las condiciones de entrada del aire exterior a la UTA por las condiciones del aire (temperatura seca y húmeda) de una determinada zona "buffer". Se puede utilizar, por ejemplo, para simular situaciones en las que el aire exterior se toma a través de una doble piel, muro trombe o invernadero. Es necesario completar el modelo añadiendo el caudal exterior  (por ejemplo a través de infiltraciones) a la zona "buffer" para que el balance térmico sea correcto.
+!- Cambia AIR LOOP AHU OUTDOOR AIR INLET por el nombre correspondiente del nodo de entrada a la UTA (habitualmente CIRCUITO DE AIRE UTA OUTDOOR AIR INLET si sólo hay un circuito de aire) y BufferZone por el nombre de la zona "buffer" (p.ej. Bloque1:Zona1).
+
+EnergyManagementSystem:Actuator,
+	DBTempAHUInlet,
+	AIR LOOP AHU OUTDOOR AIR INLET,
+	Outdoor Air System Node,
+	Drybulb Temperature;
+
+EnergyManagementSystem:Actuator,
+	WBTempAHUInlet,
+	AIR LOOP AHU OUTDOOR AIR INLET,
+	Outdoor Air System Node,
+	Wetbulb Temperature;
+  
+EnergyManagementSystem:Sensor,
+	BufferZoneMAT,
+	BufferZone,
+	Zone Mean Air Temperature;
+
+EnergyManagementSystem:Sensor,
+	BufferZoneHR,
+	BufferZone,
+	Zone Mean Air Humidity Ratio;
+
+  EnergyManagementSystem:ProgramCallingManager,
+    ChangeAHUInletConditionsCall,
+    BeginTimestepBeforePredictor, 
+    ChangeAHUInletConditions;  
+
+  EnergyManagementSystem:Program,
+    ChangeAHUInletConditions,
+    SET DBTempAHUInlet = BufferZoneMAT,
+    SET WBTempAHUInlet = @TwbFnTdbWPb BufferZoneMAT BufferZoneHR;
